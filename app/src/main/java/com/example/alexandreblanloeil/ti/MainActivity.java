@@ -14,21 +14,24 @@ import android.widget.TextView;
 
 import static android.graphics.Color.GRAY;
 import static android.graphics.Color.alpha;
+import java.util.Random;
 
 public class MainActivity extends AppCompatActivity {
 
-    Bitmap bmp;
+    Bitmap bmp, bmpSave;
+    ImageView imView;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         /*TextView tv = (TextView) findViewById(R.id.txtHello);  //textview fait bugger les boutons (déja buggés), implémentation ultérieure
         tv.setText("Hello from the code !");*/
-        ImageView imView= findViewById(R.id.bmp);
+        imView = findViewById(R.id.bmp);
         BitmapFactory.Options o = new BitmapFactory.Options();
         o.inScaled = false;
         o.inMutable = true;
         bmp = BitmapFactory.decodeResource(getResources(), R.drawable.image, o);
+        bmpSave = bmp.copy(bmp.getConfig(), false);
         imView.setImageBitmap(bmp);
         System.out.println("test");
         Log.i("TAG", "appli crée");
@@ -56,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
         });
         buttonBlue.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                blue(bmp);
+                keepGreen(bmp);
             }
         });
         buttonConvolve.setOnClickListener(new View.OnClickListener() {
@@ -66,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
         });
         buttonReset.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                reset(bmp);
+                reset();
             }
         });
         buttonContrast.setOnClickListener(new View.OnClickListener() {
@@ -99,56 +102,237 @@ public class MainActivity extends AppCompatActivity {
         int[] pixels = new int[width * height];
         bmp.getPixels(pixels, 0, width, 0, 0, width, height);
         for (int i = 0; i < width * height; i++) {
-            float r = Color.red(pixels[i]);
-            float g = Color.green(pixels[i]);
-            float b = Color.blue(pixels[i]);
-            float a = Color.alpha(pixels[i]);
-            float m = (r + g + b) / 765;
-            pixels[i] = Color.argb(a,m,m,m);
+            int r = Color.red(pixels[i]);
+            int g = Color.green(pixels[i]);
+            int b = Color.blue(pixels[i]);
+            int m = (r + g + b) / 3;
+            pixels[i] = Color.rgb(m,m,m);
         }
         bmp.setPixels(pixels, 0, width, 0, 0, width, height);
     }
     protected void colorize(Bitmap bmp){
-        System.out.println("Image changed to red successfully");
+        System.out.println("Image colorized successfully");
+        int width = bmp.getWidth();
+        int height = bmp.getHeight();
+        int[] pixels = new int[width * height];
+        float[] hsv = new float[3];
+
+        Random randint = new Random();
+        int hue = randint.nextInt(361); //361 car exclu (0,360)
+
+        bmp.getPixels(pixels, 0, width, 0, 0, width, height);
+        for (int i = 0; i < width * height; i++) {
+            Color.colorToHSV(pixels[i], hsv );
+            //int a = Color.alpha(pixels[i]);
+            hsv[0] = hue;
+            pixels[i] = Color.HSVToColor(hsv);
+        }
+        bmp.setPixels(pixels, 0, width, 0, 0, width, height);
     }
+
     protected void keepRed(Bitmap bmp){
         System.out.println("Image has only red");
         int width = bmp.getWidth();
         int height = bmp.getHeight();
         int[] pixels = new int[width * height];
+        float[] hsv = new float[3];
+
         bmp.getPixels(pixels, 0, width, 0, 0, width, height);
         for (int i = 0; i < width * height; i++) {
-            float r = Color.red(pixels[i]);
-            float g = Color.green(pixels[i]);
-            float b = Color.blue(pixels[i]);
-            float a = Color.alpha(pixels[i]);
-            if(r !=0 && g ==0 && b == 0) {
-                pixels[i] = Color.argb(a, r, g, b);
+            int r = Color.red(pixels[i]);
+            int g = Color.green(pixels[i]);
+            int b = Color.blue(pixels[i]);
+            Color.colorToHSV(pixels[i], hsv );
+            //int a = Color.alpha(pixels[i]);
+            if(hsv[0] > 340 || hsv[0] < 15) {
+                pixels[i] = Color.rgb(r, g, b);
             }
                 else{
-                float m = (r + g + b) / 765;
-                pixels[i] = Color.argb(a, m, m, m);
+                int m = (r + g + b) / 3;
+                pixels[i] = Color.rgb(m, m, m);
             }
         }
         bmp.setPixels(pixels, 0, width, 0, 0, width, height);
     }
-    protected void blue(Bitmap bmp){
-        System.out.println("Image changed to blue successfully");
-    }
-    protected void contrast(Bitmap bmp){
+    protected void keepGreen(Bitmap bmp){
+        System.out.println("Image has only green");
         int width = bmp.getWidth();
         int height = bmp.getHeight();
         int[] pixels = new int[width * height];
+        float[] hsv = new float[3];
+
         bmp.getPixels(pixels, 0, width, 0, 0, width, height);
-        int[] hist = new int[100];
-        for(int i = 0; i < height; i++)
-            for(int j = 0; j < width; j++);
-               // hist[I(i, j)]++;
+        for (int i = 0; i < width * height; i++) {
+            int r = Color.red(pixels[i]);
+            int g = Color.green(pixels[i]);
+            int b = Color.blue(pixels[i]);
+            Color.colorToHSV(pixels[i], hsv );
+            //int a = Color.alpha(pixels[i]);
+            if(hsv[0] > 70 && hsv[0] < 170) {
+                pixels[i] = Color.rgb(r, g, b);
+            }
+            else{
+                int m = (r + g + b) / 3;
+                pixels[i] = Color.rgb(m, m, m);
+            }
+        }
+        bmp.setPixels(pixels, 0, width, 0, 0, width, height);
     }
+    protected void contrast(Bitmap bmp){
+        System.out.println("contraste egalisation histogramme");
+        int width = bmp.getWidth();
+        int height = bmp.getHeight();
+        int[] pixels = new int[width * height];
+        float[] hsv = new float[3];
+        int minred = 255;  //255 = pire valeur possible
+        int maxred = 0; //0 = pire valeur possible
+        int mingreen = 255;  //255 = pire valeur possible
+        int maxgreen = 0; //0 = pire valeur possible
+        int minblue = 255;  //255 = pire valeur possible
+        int maxblue = 0; //0 = pire valeur possible
+
+        bmp.getPixels(pixels, 0, width, 0, 0, width, height);
+        for (int i = 0; i < width * height; i++) {
+            int r = Color.red(pixels[i]);   //capture la valeur de la couleur rouge
+            int g = Color.green(pixels[i]);   //capture la valeur de la couleur vert
+            int b = Color.blue(pixels[i]);   //capture la valeur de la couleur bleue
+            if (r < minred) {     //plus petit que la valeur minimale = remplacée
+                minred = r;
+            }
+            if (r > maxred) {     //plus grand que la valeur maximale = remplacée
+                maxred = r;
+            }
+
+        }
+        for(int i = 0; i < width* height; i++) {
+            int r = Color.red(pixels[i]); //capture la valeur courante du rouge
+            int contr = (r - minred) * 255 / (maxred - minred);
+            pixels[i] = Color.rgb(contr, contr, contr);
+        }
+        bmp.setPixels(pixels, 0, width, 0, 0, width, height);
+
+
+    }
+    protected void contrastExtDynColor(Bitmap bmp){ //ne fonctionne pas, l'image change pas
+        System.out.println("contraste egalisation histogramme");
+        int width = bmp.getWidth();
+        int height = bmp.getHeight();
+        int[] pixels = new int[width * height];
+        float[] hsv = new float[3];
+        int minred = 255;  //255 = pire valeur possible
+        int maxred = 0; //0 = pire valeur possible
+        int mingreen = 255;  //255 = pire valeur possible
+        int maxgreen = 0; //0 = pire valeur possible
+        int minblue = 255;  //255 = pire valeur possible
+        int maxblue = 0; //0 = pire valeur possible
+
+        bmp.getPixels(pixels, 0, width, 0, 0, width, height);
+        for (int i = 0; i < width * height; i++) {
+            int r = Color.red(pixels[i]);   //capture la valeur de la couleur rouge
+            int g = Color.green(pixels[i]);   //capture la valeur de la couleur vert
+            int b = Color.blue(pixels[i]);   //capture la valeur de la couleur bleue
+            if (r < minred) {     //plus petit que la valeur minimale = remplacée
+                minred = r;
+            }
+            if (r > maxred) {     //plus grand que la valeur maximale = remplacée
+                maxred = r;
+            }
+            if (r < mingreen) {     //plus petit que la valeur minimale = remplacée
+                mingreen = g;
+            }
+            if (r > maxgreen) {     //plus grand que la valeur maximale = remplacée
+                maxgreen = g;
+            }
+            if (r < minblue) {     //plus petit que la valeur minimale = remplacée
+                minblue = b;
+            }
+            if (r > maxblue) {     //plus grand que la valeur maximale = remplacée
+                maxblue = b;
+            }
+
+        }
+        for(int i = 0; i < width* height; i++) {
+            int r = Color.red(pixels[i]); //capture la valeur courante du rouge
+            int contrred = (r - minred) * 255 / (maxred - minred);
+            int g = Color.green(pixels[i]); //capture la valeur courante du vert
+            int contrgreen = (g - mingreen) * 255 / (maxgreen - mingreen);
+            int b = Color.blue(pixels[i]); //capture la valeur courante du bleu
+            int contrblue = (b - minblue) * 255 / (maxblue - minblue);
+            pixels[i] = Color.rgb(contrred, contrgreen, contrblue);
+        }
+        bmp.setPixels(pixels, 0, width, 0, 0, width, height);
+
+    }
+
+    protected void contrastEgHist(Bitmap bmp){ //ne fonctionne pas, l'image change pas
+        System.out.println("contraste egalisation histogramme");
+        int width = bmp.getWidth();
+        int height = bmp.getHeight();
+        int[] pixels = new int[width * height];
+        float[] hsv = new float[3];
+        int minred = 255;  //255 = pire valeur possible
+        int maxred = 0; //0 = pire valeur possible
+        int mingreen = 255;  //255 = pire valeur possible
+        int maxgreen = 0; //0 = pire valeur possible
+        int minblue = 255;  //255 = pire valeur possible
+        int maxblue = 0; //0 = pire valeur possible
+
+        bmp.getPixels(pixels, 0, width, 0, 0, width, height);
+        for (int i = 0; i < width * height; i++) {
+            int r = Color.red(pixels[i]);   //capture la valeur de la couleur rouge
+            int g = Color.green(pixels[i]);   //capture la valeur de la couleur vert
+            int b = Color.blue(pixels[i]);   //capture la valeur de la couleur bleue
+            if (r < minred) {     //plus petit que la valeur minimale = remplacée
+                minred = r;
+            }
+            if (r > maxred) {     //plus grand que la valeur maximale = remplacée
+                maxred = r;
+            }
+            if (r < mingreen) {     //plus petit que la valeur minimale = remplacée
+                mingreen = g;
+            }
+            if (r > maxgreen) {     //plus grand que la valeur maximale = remplacée
+                maxgreen = g;
+            }
+            if (r < minblue) {     //plus petit que la valeur minimale = remplacée
+                minblue = b;
+            }
+            if (r > maxblue) {     //plus grand que la valeur maximale = remplacée
+                maxblue = b;
+            }
+
+        }
+        for(int i = 0; i < width* height; i++) {
+            int r = Color.red(pixels[i]); //capture la valeur courante du rouge
+            int contrred = (r - minred) * 255 / (maxred - minred);
+            int g = Color.green(pixels[i]); //capture la valeur courante du vert
+            int contrgreen = (g - mingreen) * 255 / (maxgreen - mingreen);
+            int b = Color.blue(pixels[i]); //capture la valeur courante du bleu
+            int contrblue = (b - minblue) * 255 / (maxblue - minblue);
+            pixels[i] = Color.rgb(contrred, contrgreen, contrblue);
+        }
+        bmp.setPixels(pixels, 0, width, 0, 0, width, height);
+
+    }
+
+   /* protected void histogram(Bitmap bmp){
+        int width = bmp.getWidth();
+        int height = bmp.getHeight();
+        int[] pixels = new int[width * height];
+        float[] hsv = new float[3];
+
+        for(int i = 0; i < nl; i++)
+            for(int j = 0; j < nc; j++)
+                hist[I(i, j)]++;
+    } */
+
     protected void convolve(Bitmap bmp){
         System.out.println("Image convolved successfully");
     }
-    protected void reset(Bitmap bmp){
+
+    protected void reset(){
+        bmp = bmpSave.copy(bmp.getConfig() , true);
+        imView.setImageBitmap(bmp);
         System.out.println("Image reset successfully");
     }
 
